@@ -1,0 +1,12 @@
+package com.rra.arts.arts_backend.model.enums;
+
+public enum WorkflowStage {
+    CREATED,
+    ASSIGNED_TO_FOCAL_PERSON,
+    ASSIGNED_TO_STAFF,
+    RETURNED_TO_FOCAL_PERSON,
+    SUBMITTED_FOR_VALIDATION,
+    RETURNED_BY_AUDITOR,
+    PROPOSED_FOR_DIRECTOR_REVIEW,
+    VALIDATED_BY_DIRECTOR
+}
