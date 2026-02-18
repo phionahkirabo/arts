@@ -1,10 +1,7 @@
 package com.rra.arts.arts_backend.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "department")
@@ -12,6 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Department extends BaseEntity {
     
     @Column(nullable = false)
@@ -22,4 +20,9 @@ public class Department extends BaseEntity {
     
     @Column(columnDefinition = "TEXT")
     private String description;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_department_id")
+    private Department parentDepartment;
 }
