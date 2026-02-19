@@ -4,9 +4,11 @@ import com.rra.arts.arts_backend.model.Department;
 import com.rra.arts.arts_backend.repository.DepartmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(1)
 @RequiredArgsConstructor
 public class DepartmentSeeder implements CommandLineRunner {
 

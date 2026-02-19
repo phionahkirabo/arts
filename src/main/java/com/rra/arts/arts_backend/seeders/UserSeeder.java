@@ -9,10 +9,12 @@ import com.rra.arts.arts_backend.repository.DepartmentRepository;
 import com.rra.arts.arts_backend.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(2)
 @RequiredArgsConstructor
 public class UserSeeder implements CommandLineRunner {
 

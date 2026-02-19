@@ -3,11 +3,13 @@ package com.rra.arts.arts_backend.service.impl;
 
 import com.rra.arts.arts_backend.dto.requests.AuditReportRequestDTO;
 import com.rra.arts.arts_backend.dto.responses.AuditReportResponseDTO;
+
 import com.rra.arts.arts_backend.exception.ForbiddenException;
 import com.rra.arts.arts_backend.exception.ResourceNotFoundException;
 import com.rra.arts.arts_backend.exception.UnauthorizedException;
+import com.rra.arts.arts_backend.mapper.AuditReportMapper;
 import com.rra.arts.arts_backend.model.AuditReport;
-import com.rra.arts.arts_backend.model.ReportSequence;
+import com.rra.arts.arts_backend.model.ReportsSequencing;
 import com.rra.arts.arts_backend.model.User;
 import com.rra.arts.arts_backend.model.enums.UserRole;
 import com.rra.arts.arts_backend.repository.AuditReportRepository;
@@ -15,73 +17,132 @@ import com.rra.arts.arts_backend.repository.ReportSequenceRepository;
 import com.rra.arts.arts_backend.repository.UsersRepository;
 import com.rra.arts.arts_backend.service.AuditReportService;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Year;
+import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-public class AuditReportServiceImpl implements AuditReportService {
 
+public class AuditReportServiceImpl implements AuditReportService {
     private final AuditReportRepository auditReportRepository;
     private final ReportSequenceRepository reportSequenceRepository;
-    private final UsersRepository userRepository;
+    private final UsersRepository usersRepository;
 
-    @Override
-    @Transactional
-    private User getAuthenticatedUser() {
 
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new UnauthorizedException("User is not authenticated");
-        }
+    public AuditReportServiceImpl(AuditReportRepository auditReportRepository, ReportSequenceRepository reportSequenceRepository, UsersRepository usersRepository ) {
+        this.auditReportRepository = auditReportRepository;
+        this.reportSequenceRepository = reportSequenceRepository;
+        this.usersRepository = usersRepository;
 
-        String username = authentication.getName();
-
-        return userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Authenticated user not found"));
     }
 
 
-    int year = Year.now().getValue();
+    @Override
+    @Transactional
+    public AuditReportResponseDTO createReport(AuditReportRequestDTO request) {
+        // 1️⃣ Get the currently logged-in user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException("User must be logged in to create an audit report");
+        }
 
-        ReportSequence sequence = reportSequenceRepository
-                .findByYearForUpdate(year)
+        String email = authentication.getName();
+        User currentUser = usersRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Logged-in user not found"));
+
+        // 2️⃣ Validate role
+        if (currentUser.getRole() != UserRole.INTERNAL_AUDITOR) {
+            throw new ForbiddenException("Only INTERNAL_AUDITOR can create audit reports");
+        }
+
+        // 3️⃣ Generate report number (concurrency-safe)
+        Integer year = Year.now().getValue();
+        ReportsSequencing sequence = reportSequenceRepository
+                .findBySequenceYearForUpdate(year)
                 .orElseGet(() -> {
-                    ReportSequence newSequence = ReportSequence.builder()
-                            .year(year)
+                    ReportsSequencing newSequence = ReportsSequencing.builder()
+                            .sequenceYear(year)
                             .lastValue(0L)
                             .build();
-                    return reportSequenceRepository.save(newSequence);
+                    return reportSequenceRepository.saveAndFlush(newSequence);
                 });
 
         sequence.setLastValue(sequence.getLastValue() + 1);
         reportSequenceRepository.save(sequence);
 
+
         String reportNumber = String.format("AR-%d-%04d", year, sequence.getLastValue());
 
-        AuditReport report = AuditReport.builder()
-                .reportNumber(reportNumber)
-                .title(requestDTO.getTitle())
-                .scope(requestDTO.getScope())
-                .auditType(requestDTO.getAuditType())
-                .reportDate(
-                        requestDTO.getReportDate() != null
-                                ? requestDTO.getReportDate()
-                                : LocalDate.now()
-                )
+        // 4️⃣ Map DTO → Entity
+        AuditReport auditReport = AuditReport.builder()
+                .title(request.getTitle())
+                .scope(request.getScope())
+                .auditType(request.getAuditType())
+                .reportDate(request.getReportDate())
                 .createdBy(currentUser)
+                .reportNumber(reportNumber)
                 .build();
 
-        AuditReport saved = auditReportRepository.save(report);
+        // 5️⃣ Save entity
+        AuditReport savedReport = auditReportRepository.save(auditReport);
 
-        return AuditReportMapper.toResponse(saved);
+        // 6️⃣ Map Entity → Response DTO
+
+        return AuditReportMapper.toResponse(savedReport);
+    }
+
+    @Override
+    public List<AuditReportResponseDTO> getAllReports() {
+        List<AuditReport> reports = auditReportRepository.findAll();
+        return reports.stream()
+                .map(AuditReportMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public AuditReportResponseDTO assignDirector(Long reportId, Long directorId) {
+        AuditReport report = auditReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Audit report not found"));
+
+        User director = usersRepository.findById(directorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Director not found"));
+
+        if (director.getRole() != UserRole.DIRECTOR_IAU) {
+            throw new ForbiddenException("Assigned user is not a Director");
+        }
+
+        report.setAssignedDirector(director);
+        AuditReport updatedReport = auditReportRepository.save(report);
+
+        return AuditReportMapper.toResponse(updatedReport);
+    }
+    @Override
+    public AuditReportResponseDTO getReportById(Long id) {
+        AuditReport report = auditReportRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Audit report not found"));
+        return AuditReportMapper.toResponse(report);
+    }
+
+
+
+    @Override
+    @Transactional
+    public AuditReportResponseDTO updateById(Long id, AuditReportResponseDTO updateRequest) {
+        AuditReport report = auditReportRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Audit report not found"));
+
+        report.setTitle(updateRequest.getTitle());
+        report.setScope(updateRequest.getScope());
+        report.setAuditType(updateRequest.getAuditType());
+        report.setReportDate(updateRequest.getReportDate());
+
+        AuditReport updated = auditReportRepository.save(report);
+        return AuditReportMapper.toResponse(updated);
     }
 }
 

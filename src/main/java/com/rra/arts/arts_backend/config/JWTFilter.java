@@ -80,7 +80,7 @@ public class JWTFilter extends OncePerRequestFilter {
                 }
 
             } catch (Exception ex) {
-                logger.warn("JWT authentication failed");
+                logger.warn("****************JWT authentication failed***********************");
             }
         }
 

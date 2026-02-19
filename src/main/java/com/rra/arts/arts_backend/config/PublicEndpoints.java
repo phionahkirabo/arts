@@ -3,35 +3,31 @@ package com.rra.arts.arts_backend.config;
 import java.util.List;
 
 public class PublicEndpoints {
-    public static final List<String> ENDPOINTS = List.of(
 
+    public static final List<String> ENDPOINTS = List.of(
             // -------------------------
-            //   Public Authentication URLs individually
+            //   Public Authentication URLs
             // -------------------------
-            "/api/v1/users/signup",
-            "/api/v1/users/login",
+            "/api/users/signup",
+            "/api/users/login",
             "/api/users/forgot-password",
             "/api/users/reset-password/otp",
             "/api/users/reset-password",
             "/api/users/verify-email",
 
-
             // -------------------------
-            //   Public Swagger / API Docs individually
+            //   Swagger / API Docs URLs
             // -------------------------
             "/swagger-ui/**",
             "/swagger-ui.html",
-
             "/swagger-resources/**",
             "/webjars/**",
-
-            "/api-docs.yaml",
+            "/v3/api-docs/**",       // Springdoc default
             "/api-documentation/**",
-
-
+            "/api-docs.yaml",
 
             // -------------------------
-            //   Public content URLs individually
+            //   Public Content URLs (if you have public resources)
             // -------------------------
             "/api/public/items",
             "/api/public/categories",

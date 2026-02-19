@@ -11,7 +11,7 @@ public interface AuditReportService {
     AuditReportResponseDTO createReport(AuditReportRequestDTO request) ;
 
     List<AuditReportResponseDTO> getAllReports();
-    AuditReportResponseDTO assignDirector(String reportId, String directorId);
+    AuditReportResponseDTO assignDirector(Long reportId, Long directorId);
 
     AuditReportResponseDTO getReportById(Long id);
     AuditReportResponseDTO updateById(Long id,AuditReportResponseDTO updateRequest);

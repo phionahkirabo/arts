@@ -1,18 +1,23 @@
 package com.rra.arts.arts_backend.repository;
 
 
-import com.rra.arts.arts_backend.model.ReportSequence;
+import com.rra.arts.arts_backend.model.ReportsSequencing;
 import org.springframework.data.jpa.repository.*;
         import org.springframework.data.repository.query.Param;
 
-import jakarta.persistence.LockModeType;
+import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
+@Repository
+public interface ReportSequenceRepository extends JpaRepository<ReportsSequencing, Long> {
 
-public interface ReportSequenceRepository extends JpaRepository<ReportSequence, Long> {
+    @Query(
+            value = "SELECT * FROM report_sequence WHERE sequence_year = :sequenceYear FOR UPDATE",
+            nativeQuery = true
+    )
+    Optional<ReportsSequencing> findBySequenceYearForUpdate(
+            @Param("sequenceYear") Integer sequenceYear
+    );
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT r FROM ReportSequence r WHERE r.year = :year")
-    Optional<ReportSequence> findByYearForUpdate(@Param("year") Integer year);
-
-    Optional<ReportSequence> findByYear(Integer year);
+    Optional<ReportsSequencing> findBySequenceYear(Integer sequenceYear);
 }
